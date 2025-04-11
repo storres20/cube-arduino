@@ -1,51 +1,67 @@
 #include <SPI.h>
 #include <LoRa.h>
+#include <DHT.h>
 
-#define SS_PIN    10
-#define RST_PIN   9
-#define DIO0_PIN  2
-#define LED_PIN   3
+// === Pin Definitions ===
+#define DHTPIN D2
+#define DHTTYPE DHT11
+
+#define VOLTAGE_PIN A0     // GPIO1 (A0 on Nano ESP32)
+
+#define SS_PIN    D10
+#define RST_PIN   D9
+#define DIO0_PIN  D8
+
+DHT dht(DHTPIN, DHTTYPE);
 
 void setup() {
   Serial.begin(115200);
-  pinMode(LED_PIN, OUTPUT);
 
+  // Initialize DHT11
+  dht.begin();
+
+  // Set ADC resolution (12-bit: 0–4095)
+  analogReadResolution(12);
+
+  // Initialize LoRa
   LoRa.setPins(SS_PIN, RST_PIN, DIO0_PIN);
-
   if (!LoRa.begin(433E6)) {
-    Serial.println("LoRa init failed. Check wiring.");
+    Serial.println("❌ LoRa init failed. Check wiring.");
     while (true);
   }
 
-  Serial.println("Transmitter ready.");
+  Serial.println("✅ System ready: DHT11 + Voltage + LoRa");
 }
 
 void loop() {
-  String msg = "Hello";
-  Serial.print("Sending: ");
-  Serial.println(msg);
+  // === Read DHT11 Sensor ===
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
 
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("⚠️ DHT11 read failed.");
+    return;
+  }
+
+  // === Read Voltage Sensor ===
+  int rawADC = analogRead(VOLTAGE_PIN);
+  float adcVoltage = (rawADC / 4095.0) * 3.3;  // Convert to ADC voltage
+  float measuredVoltage = adcVoltage * 5.0;    // Voltage divider scale
+
+  // === Compose message ===
+  String message = "Temp:" + String(temperature, 1) + "C";
+  message += ",Hum:" + String(humidity, 1) + "%";
+  message += ",Volt:" + String(measuredVoltage, 2) + "V";
+
+  // === Print to Serial Monitor ===
+  Serial.println("=================================");
+  Serial.println("📡 Sending via LoRa:");
+  Serial.println(message);
+
+  // === Send via LoRa ===
   LoRa.beginPacket();
-  LoRa.print(msg);
+  LoRa.print(message);
   LoRa.endPacket();
 
-  delay(3000);
-
-  if (LoRa.parsePacket()) {
-    String received = "";
-    while (LoRa.available()) {
-      received += (char)LoRa.read();
-    }
-
-    received.trim(); // <- Important!
-    Serial.print("Received echo: ");
-    Serial.println(received);
-
-    if (received == msg) {
-      digitalWrite(LED_PIN, HIGH);
-      delay(300);
-      digitalWrite(LED_PIN, LOW);
-    }
-  }
+  delay(3000); // Wait 3 seconds between messages
 }
-
