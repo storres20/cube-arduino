@@ -7,7 +7,7 @@
 #define DIO0_PIN  D8
 
 // Optional LED for message indicator
-#define LED_PIN   D2  // You can connect an LED here if desired
+#define LED_PIN   D2
 
 void setup() {
   Serial.begin(115200);
@@ -34,14 +34,35 @@ void loop() {
 
     received.trim();
 
-    // === Print to Serial Monitor ===
-    Serial.println("=================================");
-    Serial.println("📥 Message received via LoRa:");
-    Serial.println(received);
-
-    // Blink LED on message receive
+    // Blink LED to show reception
     digitalWrite(LED_PIN, HIGH);
-    delay(200);
+    delay(100);
     digitalWrite(LED_PIN, LOW);
+
+    // === Print formatted data ===
+    Serial.println("=================================");
+    Serial.println("📥 LoRa Message Received:");
+
+    // === Try to parse and print nicely ===
+    printFormattedData(received);
+  }
+}
+
+void printFormattedData(const String& data) {
+  Serial.println(data);  // Original raw message
+
+  // Split by commas and print line by line
+  int start = 0;
+  int index = 0;
+
+  while ((index = data.indexOf(',', start)) != -1) {
+    String part = data.substring(start, index);
+    Serial.println("🔹 " + part);
+    start = index + 1;
+  }
+
+  // Print last part if exists
+  if (start < data.length()) {
+    Serial.println("🔹 " + data.substring(start));
   }
 }
