@@ -42,27 +42,27 @@ void loop() {
     // === Print formatted data ===
     Serial.println("=================================");
     Serial.println("📥 LoRa Message Received:");
-
-    // === Try to parse and print nicely ===
     printFormattedData(received);
   }
 }
 
 void printFormattedData(const String& data) {
-  Serial.println(data);  // Original raw message
+  // Optional: print raw data for debugging
+  // Serial.println(data);
 
-  // Split by commas and print line by line
   int start = 0;
   int index = 0;
 
   while ((index = data.indexOf(',', start)) != -1) {
     String part = data.substring(start, index);
-    Serial.println("🔹 " + part);
+    Serial.print("🔹 " + part + " ");
     start = index + 1;
   }
 
-  // Print last part if exists
+  // Print the last part if it exists
   if (start < data.length()) {
-    Serial.println("🔹 " + data.substring(start));
+    Serial.print("🔹 " + data.substring(start));
   }
+
+  Serial.println(); // Final line break
 }
